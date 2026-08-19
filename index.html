@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard Auto Post Blogger</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; background: #f4f5f7; margin: 0; padding: 24px; color: #1f2430; }
+    h1 { font-size: 20px; margin: 0 0 20px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 20px; }
+    .card { background: #fff; border-radius: 12px; padding: 16px 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    .card .label { font-size: 12px; color: #6b7280; margin-bottom: 6px; }
+    .card .value { font-size: 26px; font-weight: 700; }
+    .status-card { display: flex; align-items: center; gap: 12px; }
+    .dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+    .dot.hidup { background: #16a34a; box-shadow: 0 0 0 4px rgba(22,163,74,0.15); }
+    .dot.mati { background: #dc2626; box-shadow: 0 0 0 4px rgba(220,38,38,0.15); }
+    .berhasil .value { color: #16a34a; }
+    .gagal .value { color: #dc2626; }
+    .menunggu .value { color: #d97706; }
+    .panel { background: #fff; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 20px; }
+    .panel-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .panel-head h2 { font-size: 15px; margin: 0; }
+    .toggle button { border: 1px solid #d1d5db; background: #fff; padding: 5px 12px; font-size: 12px; cursor: pointer; color: #374151; }
+    .toggle button:first-child { border-radius: 6px 0 0 6px; }
+    .toggle button:last-child { border-radius: 0 6px 6px 0; }
+    .toggle button.active { background: #1f2430; color: #fff; border-color: #1f2430; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #eef0f2; }
+    th { color: #6b7280; font-weight: 600; font-size: 12px; }
+    .badge { padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+    .badge.ok { background: #dcfce7; color: #166534; }
+    .badge.err { background: #fee2e2; color: #991b1b; }
+    .badge.wait { background: #fef3c7; color: #92400e; }
+    a.link { color: #2563eb; text-decoration: none; font-size: 12px; }
+    #memuat { text-align: center; color: #6b7280; padding: 40px; }
+  </style>
+</head>
+<body>
+  <h1>📊 Dashboard Auto Post Blogger</h1>
+  <div id="memuat">Memuat data...</div>
+  <div id="isi" style="display:none;">
+    <div class="grid">
+      <div class="card status-card">
+        <span id="dotStatus" class="dot"></span>
+        <div>
+          <div class="label">Status Aplikasi</div>
+          <div class="value" id="statusText" style="font-size:16px;">-</div>
+        </div>
+      </div>
+      <div class="card"><div class="label">Total Postingan</div><div class="value" id="vTotal">-</div></div>
+      <div class="card berhasil"><div class="label">Berhasil</div><div class="value" id="vBerhasil">-</div></div>
+      <div class="card gagal"><div class="label">Gagal</div><div class="value" id="vGagal">-</div></div>
+      <div class="card menunggu"><div class="label">Menunggu Jadwal</div><div class="value" id="vMenunggu">-</div></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Progress Postingan Berhasil</h2>
+        <div class="toggle">
+          <button id="btnHarian" class="active">Harian</button>
+          <button id="btnMingguan">Mingguan</button>
+          <button id="btnBulanan">Bulanan</button>
+        </div>
+      </div>
+      <canvas id="chart" height="90"></canvas>
+    </div>
+
+    <div class="panel">
+      <h2 style="margin-top:0;">Riwayat Postingan Terbaru</h2>
+      <table>
+        <thead><tr><th>Judul</th><th>Jadwal</th><th>Status</th><th>Link</th></tr></thead>
+        <tbody id="tbodyDetail"></tbody>
+      </table>
+    </div>
+
+    <p style="font-size:11px;color:#9ca3af;">Terakhir script berjalan: <span id="lastRun">-</span></p>
+  </div>
+
+  <script>
+    // GANTI dengan URL Web App Apps Script Anda (harus diakhiri /exec)
+    const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbxRVG3PxRINSgopQt9G9TvQsCeKueoBG9CwSl4w_DGVSULfRj_0z0ivCD35DZvYC_iEVQ/exec';
+
+    let dataGlobal = null;
+    let chart = null;
+    let mode = 'harian';
+
+    function muat() {
+      const cbName = 'cb_' + Date.now();
+      const script = document.createElement('script');
+      window[cbName] = function(data) {
+        tampilkan(data);
+        delete window[cbName];
+        script.remove();
+      };
+      script.src = WEBAPP_URL + '?format=json&callback=' + cbName;
+      script.onerror = function() {
+        document.getElementById('memuat').innerText = 'Gagal memuat data. Cek WEBAPP_URL / akses deployment.';
+      };
+      document.body.appendChild(script);
+    }
+
+    function tampilkan(data) {
+      dataGlobal = data;
+      document.getElementById('memuat').style.display = 'none';
+      document.getElementById('isi').style.display = 'block';
+
+      const dot = document.getElementById('dotStatus');
+      const statusText = document.getElementById('statusText');
+      if (data.aplikasiHidup) {
+        dot.className = 'dot hidup';
+        statusText.innerText = 'Berjalan Normal';
+      } else {
+        dot.className = 'dot mati';
+        statusText.innerText = 'Tidak Berjalan!';
+      }
+      document.getElementById('lastRun').innerText = data.lastRun + (data.menitBerlalu !== null ? ' (' + data.menitBerlalu + ' menit lalu)' : '');
+
+      document.getElementById('vTotal').innerText = data.total;
+      document.getElementById('vBerhasil').innerText = data.berhasil;
+      document.getElementById('vGagal').innerText = data.gagal;
+      document.getElementById('vMenunggu').innerText = data.menunggu;
+
+      const tbody = document.getElementById('tbodyDetail');
+      tbody.innerHTML = '';
+      data.detail.forEach(function(d) {
+        const tr = document.createElement('tr');
+        let badgeClass = 'wait';
+        const s = d.status.toLowerCase();
+        if (s === 'sudah diposting') badgeClass = 'ok';
+        else if (s.indexOf('gagal') === 0) badgeClass = 'err';
+        tr.innerHTML =
+          '<td>' + escapeHtml(d.judul) + '</td>' +
+          '<td>' + d.jadwal + '</td>' +
+          '<td><span class="badge ' + badgeClass + '">' + escapeHtml(d.status) + '</span></td>' +
+          '<td>' + (d.link ? '<a class="link" href="' + d.link + '" target="_blank">Buka</a>' : '-') + '</td>';
+        tbody.appendChild(tr);
+      });
+
+      gambarChart();
+    }
+
+    function escapeHtml(s) {
+      return String(s || '').replace(/[&<>"']/g, function(c) {
+        return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
+      });
+    }
+
+    function kunciMinggu(d) {
+      const dt = new Date(d);
+      const hari = (dt.getDay() + 6) % 7;
+      dt.setDate(dt.getDate() - hari);
+      return dt.getFullYear() + '-' + String(dt.getMonth()+1).padStart(2,'0') + '-' + String(dt.getDate()).padStart(2,'0');
+    }
+
+    function agregasi(mode) {
+      const peta = {};
+      dataGlobal.waktuBerhasil.forEach(function(iso) {
+        const dt = new Date(iso);
+        let key;
+        if (mode === 'harian') {
+          key = dt.getFullYear() + '-' + String(dt.getMonth()+1).padStart(2,'0') + '-' + String(dt.getDate()).padStart(2,'0');
+        } else if (mode === 'mingguan') {
+          key = 'Minggu ' + kunciMinggu(dt);
+        } else {
+          key = dt.getFullYear() + '-' + String(dt.getMonth()+1).padStart(2,'0');
+        }
+        peta[key] = (peta[key] || 0) + 1;
+      });
+      const labels = Object.keys(peta).sort();
+      const nilai = labels.map(function(k){ return peta[k]; });
+      return { labels: labels, nilai: nilai };
+    }
+
+    function gambarChart() {
+      const hasil = agregasi(mode);
+      const ctx = document.getElementById('chart').getContext('2d');
+      if (chart) chart.destroy();
+      chart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: hasil.labels.length ? hasil.labels : ['Belum ada data'],
+          datasets: [{ label: 'Postingan Berhasil', data: hasil.nilai.length ? hasil.nilai : [0], backgroundColor: '#2563eb', borderRadius: 4 }]
+        },
+        options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+      });
+    }
+
+    document.getElementById('btnHarian').onclick = function(){ setMode('harian', this); };
+    document.getElementById('btnMingguan').onclick = function(){ setMode('mingguan', this); };
+    document.getElementById('btnBulanan').onclick = function(){ setMode('bulanan', this); };
+    function setMode(m, btn) {
+      mode = m;
+      document.querySelectorAll('.toggle button').forEach(function(b){ b.classList.remove('active'); });
+      btn.classList.add('active');
+      gambarChart();
+    }
+
+    muat();
+    setInterval(muat, 60000);
+  </script>
+</body>
+</html>
