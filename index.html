@@ -3,8 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Dashboard Posting Otomatis (Backup)</title>
+<title>Dashboard Posting Otomatis</title>
 <style>
+  * { box-sizing: border-box; }
   body {
     font-family: Arial, sans-serif;
     background: #f4f6f8;
@@ -12,47 +13,131 @@
     padding: 20px;
     color: #2c3e50;
   }
-  h1 {
-    text-align: center;
-    font-size: 20px;
-    margin-bottom: 20px;
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
   }
+  .header h1 {
+    font-size: 22px;
+    margin: 0;
+  }
+  .headerDate {
+    text-align: right;
+    font-size: 14px;
+    color: #2c3e50;
+  }
+  .headerDate .jamBesar {
+    font-size: 20px;
+    font-weight: bold;
+  }
+  .refreshInfo {
+    font-size: 12px;
+    color: #7f8c8d;
+    margin-bottom: 16px;
+  }
+  .statusBox {
+    background: #fff;
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    font-weight: bold;
+  }
+  .dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  .dot-green { background: #2ecc71; }
+  .dot-red { background: #e74c3c; }
+
+  .infoBox {
+    background: #fff;
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    font-size: 14px;
+  }
+  .infoBox p { margin: 4px 0; }
+  .countdown {
+    color: #2980b9;
+    font-weight: bold;
+  }
+
   .cards {
     display: flex;
     flex-wrap: wrap;
     gap: 12px;
-    justify-content: center;
     margin-bottom: 24px;
   }
   .card {
     background: #fff;
     border-radius: 8px;
     padding: 16px;
-    min-width: 140px;
+    flex: 1;
+    min-width: 130px;
     text-align: center;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
   }
   .card h2 {
     margin: 0;
-    font-size: 22px;
+    font-size: 26px;
   }
   .card p {
     margin: 4px 0 0;
     font-size: 13px;
     color: #7f8c8d;
   }
-  table {
-    width: 100%;
-    border-collapse: collapse;
+
+  .mainLayout {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .tableWrap {
+    flex: 3;
+    min-width: 300px;
     background: #fff;
     border-radius: 8px;
     overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  }
+  .sidebar {
+    flex: 1;
+    min-width: 220px;
+    background: #fff;
+    border-radius: 8px;
+    padding: 14px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    max-height: 500px;
+    overflow-y: auto;
+  }
+  .sidebar h3 {
+    margin-top: 0;
+    font-size: 15px;
+    background: #2c3e50;
+    color: #fff;
+    padding: 10px;
+    margin: -14px -14px 10px -14px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
   }
   th, td {
     padding: 10px;
     border-bottom: 1px solid #eee;
     font-size: 13px;
     text-align: left;
+    vertical-align: top;
   }
   th {
     background: #2c3e50;
@@ -61,12 +146,17 @@
   .status-posted { color: #27ae60; font-weight: bold; }
   .status-error { color: #e74c3c; font-weight: bold; }
   .status-pending { color: #f39c12; font-weight: bold; }
-  .info {
-    text-align: center;
-    font-size: 12px;
-    color: #7f8c8d;
-    margin-bottom: 16px;
+
+  .jadwalItem {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 13px;
   }
+  .jadwalItem .selesai { color: #27ae60; }
+  .jadwalItem .belum { color: #f39c12; }
+
   .loading {
     text-align: center;
     padding: 40px;
@@ -76,12 +166,31 @@
 </head>
 <body>
 
-<h1>Dashboard Posting Otomatis (Backup GitHub)</h1>
-<div class="info" id="waktuUpdate">Memuat data...</div>
+<div class="header">
+  <h1>Dashboard Posting Otomatis</h1>
+  <div class="headerDate">
+    <div id="tanggalMasehi">-</div>
+    <div id="tanggalHijri" style="font-size:12px; color:#7f8c8d;">-</div>
+    <div class="jamBesar" id="jamSekarang">-</div>
+  </div>
+</div>
+
+<div class="refreshInfo">🔄 Memperbarui data setiap 15 detik...</div>
 
 <div id="loading" class="loading">Sedang mengambil data...</div>
 
 <div id="dashboardContent" style="display:none;">
+
+  <div class="statusBox">
+    <span id="statusDot" class="dot dot-green"></span>
+    <span id="statusText">Sistem berjalan normal</span>
+  </div>
+
+  <div class="infoBox">
+    <p>Terakhir diperbarui: <strong id="waktuUpdate">-</strong></p>
+    <p>Posting berikutnya: <strong id="jadwalBerikutnya">-</strong> <span class="countdown" id="countdown"></span></p>
+  </div>
+
   <div class="cards">
     <div class="card"><h2 id="total">0</h2><p>Total Naskah</p></div>
     <div class="card"><h2 id="posted">0</h2><p>Sudah Posting</p></div>
@@ -90,58 +199,157 @@
     <div class="card"><h2 id="successRate">0%</h2><p>Tingkat Keberhasilan</p></div>
   </div>
 
-  <p style="text-align:center;">Jadwal Berikutnya: <strong id="jadwalBerikutnya">-</strong></p>
+  <div class="mainLayout">
+    <div class="tableWrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Judul</th>
+            <th>Lokasi</th>
+            <th>Jadwal</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="tabelRows"></tbody>
+      </table>
+    </div>
 
-  <table>
-    <thead>
-      <tr>
-        <th>Judul</th>
-        <th>Lokasi</th>
-        <th>Jadwal</th>
-        <th>Status</th>
-      </tr>
-    </thead>
-    <tbody id="tabelRows"></tbody>
-  </table>
+    <div class="sidebar">
+      <h3>Daftar Jadwal Hari Ini</h3>
+      <div id="jadwalList"></div>
+    </div>
+  </div>
+
 </div>
 
 <script>
-  // Ganti URL di bawah ini dengan URL Web App Apps Script kamu (diakhiri /exec)
   var URL_API = 'https://script.google.com/macros/s/AKfycbxvQZnr4Lp1Tq4mjahvsAbW7VXvz4kCQx6H7u43tVJatujFoS-caxNBWTAGmk_Aecv_AA/exec?format=json';
+  var menitJadwalBerikutnya = null; // untuk hitung mundur
 
-  fetch(URL_API)
-    .then(function (res) { return res.json(); })
-    .then(function (data) {
-      document.getElementById('loading').style.display = 'none';
-      document.getElementById('dashboardContent').style.display = 'block';
+  function perbaruiJamHeader() {
+    var now = new Date();
+    var hariList = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+    var bulanList = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 
-      document.getElementById('waktuUpdate').innerText = 'Terakhir diperbarui: ' + data.waktuUpdate;
-      document.getElementById('total').innerText = data.total;
-      document.getElementById('posted').innerText = data.posted;
-      document.getElementById('pending').innerText = data.pending;
-      document.getElementById('error').innerText = data.error;
-      document.getElementById('successRate').innerText = data.successRate + '%';
-      document.getElementById('jadwalBerikutnya').innerText = data.jadwalBerikutnya;
+    var tanggalStr = hariList[now.getDay()] + ', ' + now.getDate() + ' ' + bulanList[now.getMonth()] + ' ' + now.getFullYear();
+    document.getElementById('tanggalMasehi').innerText = tanggalStr;
 
-      var tbody = document.getElementById('tabelRows');
-      data.rows.forEach(function (row) {
-        var kelasStatus = 'status-pending';
-        if (row.status === 'Posted') kelasStatus = 'status-posted';
-        else if (row.status.indexOf('Error') === 0) kelasStatus = 'status-error';
+    try {
+      var hijri = new Intl.DateTimeFormat('id-ID', { calendar: 'islamic', day: 'numeric', month: 'long', year: 'numeric' }).format(now);
+      document.getElementById('tanggalHijri').innerText = hijri + ' H';
+    } catch (e) {
+      document.getElementById('tanggalHijri').innerText = '';
+    }
 
-        var tr = document.createElement('tr');
-        tr.innerHTML =
-          '<td>' + row.judul + '</td>' +
-          '<td>' + row.lokasi + '</td>' +
-          '<td>' + row.jadwal + '</td>' +
-          '<td class="' + kelasStatus + '">' + row.status + '</td>';
-        tbody.appendChild(tr);
+    var jam = now.getHours(), menit = now.getMinutes(), detik = now.getSeconds();
+    var jamStr = (jam < 10 ? '0' : '') + jam + '.' + (menit < 10 ? '0' : '') + menit + '.' + (detik < 10 ? '0' : '') + detik;
+    document.getElementById('jamSekarang').innerText = jamStr;
+  }
+
+  function perbaruiCountdown() {
+    if (menitJadwalBerikutnya === null) {
+      document.getElementById('countdown').innerText = '';
+      return;
+    }
+    var now = new Date();
+    var menitSekarang = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+    var selisih = menitJadwalBerikutnya - menitSekarang;
+    if (selisih < 0) selisih = 0;
+
+    var jam = Math.floor(selisih / 3600);
+    var menit = Math.floor((selisih % 3600) / 60);
+    var detik = selisih % 60;
+
+    var str = '(' +
+      (jam < 10 ? '0' : '') + jam + ':' +
+      (menit < 10 ? '0' : '') + menit + ':' +
+      (detik < 10 ? '0' : '') + detik + ')';
+    document.getElementById('countdown').innerText = str;
+  }
+
+  function muatData() {
+    fetch(URL_API)
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('dashboardContent').style.display = 'block';
+
+        document.getElementById('waktuUpdate').innerText = data.waktuUpdate;
+        document.getElementById('total').innerText = data.total;
+        document.getElementById('posted').innerText = data.posted;
+        document.getElementById('pending').innerText = data.pending;
+        document.getElementById('error').innerText = data.error;
+        document.getElementById('successRate').innerText = data.successRate + '%';
+        document.getElementById('jadwalBerikutnya').innerText = data.jadwalBerikutnya;
+
+        // Status sistem
+        var dot = document.getElementById('statusDot');
+        var teks = document.getElementById('statusText');
+        if (data.statusSistem) {
+          dot.className = 'dot dot-green';
+          teks.innerText = 'Sistem berjalan normal';
+        } else {
+          dot.className = 'dot dot-red';
+          teks.innerText = 'Trigger tidak aktif';
+        }
+
+        // Ekstrak jam dari jadwalBerikutnya untuk hitung mundur, format "... (HH:MM)"
+        var match = data.jadwalBerikutnya.match(/\((\d{2}):(\d{2})\)/);
+        if (match) {
+          var jamTarget = parseInt(match[1], 10);
+          var menitTarget = parseInt(match[2], 10);
+          menitJadwalBerikutnya = jamTarget * 3600 + menitTarget * 60;
+        } else {
+          menitJadwalBerikutnya = null;
+        }
+
+        // Tabel utama
+        var tbody = document.getElementById('tabelRows');
+        tbody.innerHTML = '';
+        data.rows.forEach(function (row) {
+          var kelasStatus = 'status-pending';
+          if (row.status === 'Posted') kelasStatus = 'status-posted';
+          else if (row.status.indexOf('Error') === 0) kelasStatus = 'status-error';
+
+          var tr = document.createElement('tr');
+          tr.innerHTML =
+            '<td>' + row.judul + '</td>' +
+            '<td>' + row.lokasi + '</td>' +
+            '<td>' + row.jadwal + '</td>' +
+            '<td class="' + kelasStatus + '">' + row.status + '</td>';
+          tbody.appendChild(tr);
+        });
+
+        // Sidebar jadwal hari ini
+        var jadwalDiv = document.getElementById('jadwalList');
+        jadwalDiv.innerHTML = '';
+        data.jadwalList.forEach(function (j) {
+          var div = document.createElement('div');
+          div.className = 'jadwalItem';
+          div.innerHTML =
+            '<span>' + j.jam + ' - ' + j.judul + '</span>' +
+            '<span class="' + (j.selesai ? 'selesai' : 'belum') + '">' + (j.selesai ? '✔' : '⏳') + '</span>';
+          jadwalDiv.appendChild(div);
+        });
+      })
+      .catch(function (err) {
+        document.getElementById('loading').innerText = 'Gagal memuat data. Pastikan URL Web App sudah benar dan dapat diakses publik.';
+        console.error(err);
       });
-    })
-    .catch(function (err) {
-      document.getElementById('loading').innerText = 'Gagal memuat data. Pastikan URL Web App sudah benar dan dapat diakses publik.';
-      console.error(err);
-    });
+  }
+
+  // Jalankan pertama kali
+  perbaruiJamHeader();
+  muatData();
+
+  // Update jam & countdown tiap detik
+  setInterval(function () {
+    perbaruiJamHeader();
+    perbaruiCountdown();
+  }, 1000);
+
+  // Refresh data tiap 15 detik
+  setInterval(muatData, 15000);
 </script>
 
 </body>
