@@ -202,7 +202,7 @@ function muatData() {
       document.getElementById('pending').innerText = data.pending;
       document.getElementById('error').innerText = data.error;
       document.getElementById('successRate').innerText = data.successRate + '%';
-      document.getElementById('terjadwalHariIni').innerText = data.terjadwalHariIni;
+      document.getElementById('terjadwalHariIni').innerText = data.terjadwalHariIni != null ? data.terjadwalHariIni : 0;
       document.getElementById('jadwalBerikutnya').innerText = data.jadwalBerikutnyaTeks;
       document.getElementById('infoUpdate').innerText = 'Terakhir diperbarui: ' + data.waktuUpdate;
 
