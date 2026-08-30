@@ -152,8 +152,7 @@
 <script>
 var WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxvQZnr4Lp1Tq4mjahvsAbW7VXvz4kCQx6H7u43tVJatujFoS-caxNBWTAGmk_Aecv_AA/exec';
 var passwordSesi = '';
-var jadwalBerikutnyaWaktu = '';
-
+var jadwalBerikutnyaTimestamp = null;
 // ================== JAM REAL-TIME ==================
 function updateJam() {
   var now = new Date();
@@ -167,16 +166,11 @@ updateJam();
 // ================== COUNTDOWN KE JADWAL BERIKUTNYA ==================
 function updateCountdown() {
   var el = document.getElementById('countdown');
-  if (!jadwalBerikutnyaWaktu) {
+  if (!jadwalBerikutnyaTimestamp) {
     el.innerText = '-';
     return;
   }
-  var now = new Date();
-  var parts = jadwalBerikutnyaWaktu.split(':');
-  var target = new Date();
-  target.setHours(parseInt(parts[0], 10), parseInt(parts[1], 10), 0, 0);
-
-  var selisih = target - now;
+  var selisih = jadwalBerikutnyaTimestamp - new Date().getTime();
   if (selisih <= 0) {
     el.innerText = 'Waktunya posting!';
     return;
@@ -189,8 +183,7 @@ function updateCountdown() {
     (menit < 10 ? '0' : '') + menit + ':' +
     (detik < 10 ? '0' : '') + detik;
 }
-
-// ================== MUAT DATA DASHBOARD ==================
+ // ================== MUAT DATA DASHBOARD ==================
 function muatData() {
   fetch(WEB_APP_URL + '?format=json')
     .then(function (r) { return r.json(); })
@@ -204,7 +197,7 @@ function muatData() {
       document.getElementById('jadwalBerikutnya').innerText = data.jadwalBerikutnyaTeks;
       document.getElementById('infoUpdate').innerText = 'Terakhir diperbarui: ' + data.waktuUpdate;
 
-      jadwalBerikutnyaWaktu = data.jadwalBerikutnyaWaktu || '';
+      jadwalBerikutnyaTimestamp = data.jadwalBerikutnyaTimestamp || null;
       updateCountdown();
 
       var tbody = document.getElementById('tabelData');
